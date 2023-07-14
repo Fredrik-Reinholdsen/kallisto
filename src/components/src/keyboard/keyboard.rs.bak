@@ -1,0 +1,198 @@
+use rp_pico::hal as hal;
+
+use embedded_hal::digital::v2::{InputPin, OutputPin};
+use heapless::spsc::{Producer, Consumer};
+use usbd_human_interface_device as hid;
+use hid::page::Keyboard;
+use core::convert::Infallible;
+use num_enum::{TryFromPrimitive, TryFromPrimitiveError};
+use core::convert::TryFrom;
+use crate::keyboard::types::*;
+
+const N_KEYS: usize = 21;
+
+pub const DEBOUNCE_US: u32 = 50_000;
+pub const DOUBLE_PRESS_MAX_US: u32 = 200_000;
+pub const HOLD_PRESS_MIN_US: u32 = 500_000;
+pub const HOLD_PRESS_PERIOD: u32 = 50_000;
+pub const N_LAYERS: usize = 5;
+
+
+pub struct EventProducer<'t, 'q, const N: usize> {
+    last_states: [bool; N],
+    // Array of timestamps of when each key was last pressed
+    last_press: [u32; N],
+    last_double_press: [u32; N],
+    last_held_press: [u32; N],
+    timer: &'t hal::Timer,
+    tx: Producer<'q, KeyEvent, 32>,
+}
+
+// Event mapper maps current and last iteration pin/key states
+// into a type of
+impl<'t, 'q, const N: usize> EventProducer<'t, 'q, N> {
+
+    pub fn new(timer: &'t hal::Timer, tx: Producer<'q, KeyEvent, 32>) -> Self {
+        EventProducer {
+            timer,
+            tx,
+            last_states: [false; N],
+            last_double_press: [timer.get_counter_low(); N],
+            last_held_press: [timer.get_counter_low(); N],
+            last_press: [timer.get_counter_low(); N],
+        }
+
+    }
+
+    pub fn update(&mut self, pin_states: u64) -> bool{
+        let mut is_pressed: bool;
+        let now: u32 = self.timer.get_counter_low();
+
+        for id in (0..N).into_iter() {
+            is_pressed = (pin_states >> id) & 0x1 == 1;
+            if !is_pressed {
+                if self.last_states[id] {
+                    let _ = self.tx.enqueue(KeyEvent::Released(id));
+                }
+                continue;
+            }
+            // If the button was not previosuly pressed, check if it is a double click,
+            // else it is just a normal button press
+            if is_pressed && !self.last_states[id] {
+                if now - self.last_press[id] < DOUBLE_PRESS_MAX_US {
+                    if now - self.last_double_press[id] > DOUBLE_PRESS_MAX_US {
+                        let _ = self.tx.enqueue(KeyEvent::DoublePress(id));
+                        self.last_double_press[id] = now;
+                        self.last_press[id] = now;
+                    } else {
+                        let _ = self.tx.enqueue(KeyEvent::Pressed(id));
+                        self.last_press[id] = now;
+                    }
+                } else {
+                    // Debounce further
+                    if now - self.last_press[id] > DEBOUNCE_US {
+                        let _ = self.tx.enqueue(KeyEvent::Pressed(id));
+                        self.last_press[id] = now;
+                    }
+                }
+                continue;
+            }
+            // If button was pressed in last iteration check if the held
+            // time exceeds that of a held press
+            if now - self.last_press[id] > HOLD_PRESS_MIN_US {
+                if now - self.last_held_press[id] > HOLD_PRESS_PERIOD {
+                    let _ = self.tx.enqueue(KeyEvent::HeldPress(id));
+                    self.last_held_press[id] = now;
+                }
+            }
+        } 
+        self.update_last_state(pin_states);
+        if self.tx.len() != 0 {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    // Updates the last state array to the current state
+    fn update_last_state(&mut self, pin_states: u64) {
+        self.last_states
+            .iter_mut()
+            .enumerate()
+            .for_each(|(i, s)| *s = (pin_states >> i) & 0x1 == 1);
+        
+    }
+
+}
+
+pub type KeyMap = [[LayerKeyMap; N_LAYERS]; N_KEYS];
+
+pub struct EventConsumer<'q, const N: usize> {
+    rx: Consumer<'q, KeyEvent, 32>,
+    layers: [[LayerKeyMap; 5]; N],
+    base_layer: [LayerKeyMap; N],
+    key_states: [Option<KeyPress>; N],
+    pub layer: usize,
+    last_layer: usize,
+}
+
+impl<'q, const N: usize> EventConsumer<'q, N> {
+    pub fn new(base_layer: [LayerKeyMap; N], layers: [[LayerKeyMap; N_LAYERS]; N], rx: Consumer<'q, KeyEvent, 32>) -> Self {
+        EventConsumer {
+            rx,
+            base_layer,
+            layers,
+            key_states: [None; N],
+            layer: 0,
+            last_layer: 0,
+        }
+    }
+}
+
+pub trait LayeredKeyboard<'q, const N: usize> {
+    fn get_report(&mut self) -> [Keyboard; N];
+}
+
+impl<'q, const N: usize> LayeredKeyboard<'q, N> for EventConsumer<'q, N> {
+    fn get_report(&mut self) -> [Keyboard; N] {
+        let mut out_report = [Keyboard::NoEventIndicated; N];
+        while self.rx.ready() {
+            // Maps the key event and ID to a particular KeyPress
+            // This KeyPress is then processed and mappend to a HID key report
+            match self.rx.dequeue().unwrap() {
+                KeyEvent::Pressed(id) => {
+                    if self.layer == 0 {
+                        self.key_states[id] = self.base_layer[id].pressed;
+                    } else {
+                        self.key_states[id] = self.layers[id][self.layer - 1].pressed;
+                    }
+                },
+                KeyEvent::HeldPress(id) => {
+                    if self.layer == 0 {
+                        self.key_states[id] = self.base_layer[id].pressed;
+                        if self.base_layer[id].held_press.is_some() {
+                            self.key_states[id] = self.base_layer[id].held_press;
+                        }
+                    } else {
+                        self.key_states[id] = self.layers[id][self.layer - 1].pressed;
+                    }
+                },
+                KeyEvent::DoublePress(id) => {
+                    if self.key_map[id][self.layer].double_press.is_none() {
+                        self.key_states[id] = self.key_map[id][self.layer].pressed;
+                    } else {
+                        self.key_states[id] = self.key_map[id][self.layer].double_press.unwrap();
+                    }
+                },
+                KeyEvent::Released(id) => {
+                    self.key_states[id] = None;
+                },
+            }
+        }
+        let mut is_layer_held = false;
+        // Processes the map for layer events
+        self.key_states.iter().enumerate().for_each(|(id, key)| {
+            match key {
+                KeyPress::LayerSet0 | KeyPress::LayerSet1 |KeyPress::LayerSet2 |KeyPress::LayerSet3 |KeyPress::LayerSet4 => {
+                    self.layer = *key as usize - 0x102;
+                    self.last_layer = *key as usize - 0x102;
+                }
+                KeyPress::LayerHold0 |KeyPress::LayerHold1 | KeyPress::LayerHold2 | KeyPress::LayerHold3 | KeyPress::LayerHold4 => {
+                    let held_layer = *key as usize - 0x107;
+                    if self.layer != held_layer {
+                        self.last_layer = self.layer;
+                        self.layer = held_layer;
+                    }
+                    is_layer_held = true;
+                }
+                _ => {out_report[id] = (*key).into()}
+            }
+        });
+
+        // If no layer is held then roll-back
+        if !is_layer_held  && self.last_layer != self.layer {
+            self.layer = self.last_layer
+        }
+        return out_report;
+    }
+}
