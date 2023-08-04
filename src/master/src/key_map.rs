@@ -17,7 +17,7 @@ pub const BASE_LAYER: [LayerKeyMap; N_KEYS] = [
     LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::D, modifier: None}), held_press: None},
     LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::F, modifier: None}), held_press: None},
     LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::G, modifier: None}), held_press: None},
-    LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::Escape, modifier: None}), held_press: None},
+    LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::Escape, modifier: None}), held_press: Some(KeyMapping{key: KeyPress::LeftControl, modifier: None})},
     // Left half, Row 3
     LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::LeftShift, modifier: None}), held_press: None},
     LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::Z, modifier: None}), held_press: None},
