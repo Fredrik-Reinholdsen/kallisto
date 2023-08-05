@@ -33,7 +33,7 @@ use embedded_hal::digital::v2::{InputPin, OutputPin};
 use embedded_hal::timer::CountDown;
 use embedded_hal::blocking::i2c::Read;
 
-use heapless::{String, spsc::Queue};
+use heapless::spsc::Queue;
 use usb_device::class_prelude::*;
 use fugit::ExtU32;
 use fugit::RateExtU32;
@@ -182,8 +182,7 @@ fn main() -> ! {
     let (tx, mut rx) = event_queue.split();
     let mut kallisto = LayeredKeyboard::new(
         &timer,
-        BASE_LAYER,
-        [SYMBOL_LAYER, NUM_LAYER, [None; N_KEYS], [None; N_KEYS], [None; N_KEYS]],
+        [BASE_LAYER, SYMBOL_LAYER, NUM_LAYER, [None; N_KEYS], [None; N_KEYS]],
         tx,
     );
 

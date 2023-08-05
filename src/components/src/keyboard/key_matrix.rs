@@ -7,7 +7,7 @@ pub const N_ROWS: usize = 3;
 pub const N_COLS: usize = 7;
 pub const N_KEYS : usize = N_COLS * N_ROWS;
 pub const PIN_SETTLE_TIME_US: u32 = 200;
-pub const DEBOUNCE_US: u32 = 50_000;
+pub const DEBOUNCE_US: u32 = 20_000;
 
 pub struct KeyMatrix<'t> {
     // Hold the time a change event happended for
