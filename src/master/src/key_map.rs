@@ -35,13 +35,13 @@ pub const BASE_LAYER: [Option<LayerKeyMap>; N_KEYS] = [
     Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::P, modifier: None}), held_press: None}),
     Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::DeleteForward, modifier: None}), held_press: None}),
     // Right half, Row 2
-    Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::ReturnEnter, modifier: None}), held_press: None}),
+    Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::ReturnEnter, modifier: None}), held_press: Some(KeyMapping{ key: KeyPress::LeftGUI, modifier: None})}),
     Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::H, modifier: None}), held_press: None}),
     Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::J, modifier: None}), held_press: None}),
     Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::K, modifier: None}), held_press: None}),
     Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::L, modifier: None}), held_press: None}),
     Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::Keyboard7, modifier: Some(ModifierKey::RightShift)}), held_press: None}),
-    Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::LeftControl, modifier: None}), held_press: None}),
+    Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::Minus, modifier: Some(ModifierKey::RightAlt)}), held_press: None}),
     // Right half, Row 3
     Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::LayerHold2, modifier: None}), held_press: None}),
     Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::N, modifier: None}), held_press: None}),
@@ -49,7 +49,7 @@ pub const BASE_LAYER: [Option<LayerKeyMap>; N_KEYS] = [
     Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::Comma, modifier: None}), held_press: None}),
     Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::Dot, modifier: None}), held_press: None}),
     Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::Dot, modifier: Some(ModifierKey::RightShift)}), held_press: None}),
-    Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::LeftGUI, modifier: None}), held_press: None}),
+    Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::LeftAlt, modifier: None}), held_press: None}),
 ];
 
 
@@ -101,7 +101,7 @@ pub const SYMBOL_LAYER: [Option<LayerKeyMap>; N_KEYS] = [
     Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::NonUSBackslash, modifier: None}), held_press: None}),
     Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::NonUSBackslash, modifier: Some(ModifierKey::RightShift)}), held_press: None}),
     Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::Comma, modifier: Some(ModifierKey::RightShift)}), held_press: None}),
-    None,
+    Some(LayerKeyMap {pressed: Some(KeyMapping{ key: KeyPress::LeftAlt, modifier: None}), held_press: None}),
 ];
 
 pub const NUM_LAYER: [Option<LayerKeyMap>; N_KEYS] = [
