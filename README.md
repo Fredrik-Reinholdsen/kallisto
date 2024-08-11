@@ -37,9 +37,11 @@ then the held press key mapping will fire.
 ## Software Design
 The right half of the keyboard connected to the host PC acts as the master, and the the left half as the slave.
 Compiling the embedded software will generate two separate binaries, one for the master half, and one for the slave.
+
 The slave software is very light-weight and is basically only reading the button matrix, and communicating the current
 button states to the master half vi I2C. This means that the slave, once flashed, should rarely need to be re-programmed since the
 vast majority of the more complicated application code is running on the master half.
+
 Below is a figure showing the overall architecture of the software that is running on each half of the keyboard.
 ```mermaid
 flowchart RL
